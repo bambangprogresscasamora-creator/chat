@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Offline Multi User Dummy</title>
+  <style>
+    body, html {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      font-family: Arial, sans-serif;
+      display: flex; flex-direction: column;
+    }
+    .header {
+      background: #6cc24a; /* hijau */
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header select, .header button {
+      padding: 5px;
+    }
+    .chat-area {
+      flex: 1;
+      background: #4db6e5; /* biru */
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .message {
+      background: #fff;
+      padding: 8px;
+      border-radius: 5px;
+      margin-bottom: 8px;
+      max-width: 60%;
+    }
+    .me {
+      background: #d1ffd1;
+      margin-left: auto;
+    }
+    .timestamp {
+      font-size: 0.7em;
+      color: #555;
+      margin-top: 2px;
+      text-align: right;
+    }
+    .input-bar {
+      background: #f3d44c; /* kuning */
+      padding: 10px;
+      display: flex;
+      gap: 5px;
+    }
+    .input-bar input {
+      flex: 1;
+      padding: 8px;
+    }
+    .input-bar button {
+      padding: 8px 12px;
+      background: #6cc24a;
+      border: none;
+      cursor: pointer;
+      color: white;
+    }
+    .translate-note {
+      font-size: 0.8em;
+      font-style: italic;
+      color: #555;
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      Pemakai: 
+      <select id="username">
+        <option>User A</option>
+        <option>User B</option>
+        <option>User C</option>
+        <option>User D</option>
+      </select>
+    </div>
+    <div>
+      Translate: 
+      <select id="translateMode">
+        <option value="none">None</option>
+        <option value="id-en">ID → EN</option>
+        <option value="en-id">EN → ID</option>
+      </select>
+    </div>
+    <div>
+      Filter: 
+      <select id="filterUser">
+        <option value="all">Semua</option>
+        <option>User A</option>
+        <option>User B</option>
+        <option>User C</option>
+        <option>User D</option>
+      </select>
+    </div>
+    <div>
+      <button onclick="clearChat()">Reset Chat</button>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chatArea">
+    <!-- pesan tampil di sini -->
+  </div>
+
+  <div class="input-bar">
+    <input type="text" id="messageInput" placeholder="Tulis pesan disini...">
+    <button onclick="sendMessage()">Kirim</button>
+  </div>
+
+<script>
+  const chatArea = document.getElementById("chatArea");
+  const input = document.getElementById("messageInput");
+  const usernameInput = document.getElementById("username");
+  const translateMode = document.getElementById("translateMode");
+  const filterUser = document.getElementById("filterUser");
+
+  // kamus dummy sederhana
+  const dictionary = {
+    "halo":"hello", "apa kabar":"how are you", "selamat pagi":"good morning",
+    "hello":"halo", "how are you":"apa kabar", "good morning":"selamat pagi"
+  };
+
+  function dummyTranslate(text, mode){
+    if(mode==="none") return text;
+    let lower = text.toLowerCase();
+    if(mode==="id-en" && dictionary[lower]) return dictionary[lower];
+    if(mode==="en-id" && dictionary[lower]) return dictionary[lower];
+    return text; // fallback
+  }
+
+  function sendMessage(){
+    const user = usernameInput.value;
+    let msg = input.value.trim();
+    if(!msg) return;
+
+    const mode = translateMode.value;
+    const translated = dummyTranslate(msg, mode);
+
+    const timestamp = new Date().toLocaleTimeString();
+
+    let div = document.createElement("div");
+    div.className = "message";
+    if(user === usernameInput.value) {
+      div.classList.add("me");
+    }
+    div.setAttribute("data-user", user);
+    div.innerHTML = `<b>${user}:</b> ${translated}` 
+      + (translated!==msg ? `<div class="translate-note">(Asli: ${msg})</div>` : "")
+      + `<div class="timestamp">${timestamp}</div>`;
+
+    chatArea.appendChild(div);
+    input.value="";
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    saveMessages();
+  }
+
+  function saveMessages(){
+    localStorage.setItem("chat_multi", chatArea.innerHTML);
+  }
+
+  function loadMessages(){
+    chatArea.innerHTML = localStorage.getItem("chat_multi") || "";
+    applyFilter();
+  }
+
+  function clearChat(){
+    localStorage.removeItem("chat_multi");
+    chatArea.innerHTML = "";
+  }
+
+  function applyFilter(){
+    const filter = filterUser.value;
+    const messages = chatArea.querySelectorAll(".message");
+    messages.forEach(msg => {
+      if(filter==="all" || msg.getAttribute("data-user")===filter){
+        msg.style.display = "block";
+      } else {
+        msg.style.display = "none";
+      }
+    });
+  }
+
+  filterUser.addEventListener("change", applyFilter);
+
+  loadMessages();
+</script>
+
+</body>
+</html>
