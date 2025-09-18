@@ -40,7 +40,7 @@
 </head>
 <body>
   <header>
-    <div class="title">💬 Chat Bareng</div>
+    <div class="title">💬 Chat Bareng <span id="modeBadge" style="font-size:12px;margin-left:8px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;opacity:.85"></span></div>
     <div class="me" id="meLabel">Nama: -</div>
     <div class="dropdown">
       <button class="menu" id="menuBtn">☰</button>
@@ -150,7 +150,7 @@
     }
 
     // ===== Transport Abstraction (DEMO vs Firebase) =====
-    class DemoTransport{
+    class DemoTransport{ // HANYA LOKAL/SE-PERANGKAT
       constructor(room){
         this.room = room;
         this.key = `messages/${room}`;
@@ -169,7 +169,7 @@
       _get(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch{ return []; } }
       _set(arr){ localStorage.setItem(this.key, JSON.stringify(arr)); }
       listen(cb){
-        systemLine(`Ruang: ${this.room} (DEMO mode)`);
+        systemLine(`Ruang: ${this.room} (DEMO mode — tidak realtime lintas perangkat). Gunakan Firebase agar sinkron antar HP/PC.`);
         // initial
         const arr = this._get();
         messagesCache = [];
@@ -259,6 +259,12 @@
     }
 
     let transport = HAS_FB ? new FirebaseTransport(ROOM) : new DemoTransport(ROOM);
+
+    // Update badge mode di header
+    const modeBadge = document.getElementById('modeBadge');
+    function setBadge(txt, bg){ modeBadge.textContent = txt; modeBadge.style.background = bg; }
+    if(HAS_FB){ setBadge('FIREBASE (online)', '#134e4a'); }
+    else { setBadge('DEMO (lokal)', '#3f3f46'); }
 
     function addBubbleProxy(m){ addBubble(m, m.name === NAME); }
     transport.listen(addBubbleProxy);
@@ -389,6 +395,8 @@
         if(!(p && typeof p.then==='function')) throw new Error('copyTextSafely bukan Promise');
 
         console.log('Self-tests passed.');
+        // Test 6: mode badge terpasang
+        if(!document.getElementById('modeBadge').textContent) throw new Error('Mode badge tidak terpasang');
       }catch(e){ console.warn('Self-tests warning:', e.message); }
     })();
   </script>
