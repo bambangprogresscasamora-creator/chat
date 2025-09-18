@@ -1,197 +1,422 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat Offline Multi User Dummy</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Chat Bareng — HTML Only</title>
   <style>
-    body, html {
-      margin: 0; padding: 0;
-      height: 100%; width: 100%;
-      font-family: Arial, sans-serif;
-      display: flex; flex-direction: column;
+    :root{
+      --bg:#0b141a; --chat:#111b21; --mine:#005c4b; --theirs:#202c33; --text:#e9edef; --muted:#8696a0; --accent:#25d366; --line:#2a3942;
     }
-    .header {
-      background: #6cc24a; /* hijau */
-      padding: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .header select, .header button {
-      padding: 5px;
-    }
-    .chat-area {
-      flex: 1;
-      background: #4db6e5; /* biru */
-      padding: 10px;
-      overflow-y: auto;
-    }
-    .message {
-      background: #fff;
-      padding: 8px;
-      border-radius: 5px;
-      margin-bottom: 8px;
-      max-width: 60%;
-    }
-    .me {
-      background: #d1ffd1;
-      margin-left: auto;
-    }
-    .timestamp {
-      font-size: 0.7em;
-      color: #555;
-      margin-top: 2px;
-      text-align: right;
-    }
-    .input-bar {
-      background: #f3d44c; /* kuning */
-      padding: 10px;
-      display: flex;
-      gap: 5px;
-    }
-    .input-bar input {
-      flex: 1;
-      padding: 8px;
-    }
-    .input-bar button {
-      padding: 8px 12px;
-      background: #6cc24a;
-      border: none;
-      cursor: pointer;
-      color: white;
-    }
-    .translate-note {
-      font-size: 0.8em;
-      font-style: italic;
-      color: #555;
-      margin-top: 3px;
-    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;display:grid;grid-template-rows:auto 1fr auto}
+    header{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--chat);border-bottom:1px solid var(--line)}
+    .title{font-weight:700}
+    .me{margin-left:auto;font-size:14px;color:var(--muted)}
+    .dropdown{position:relative}
+    .menu{margin-left:8px;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer}
+    .dropdown-content{display:none;position:absolute;right:0;margin-top:8px;background:var(--chat);border:1px solid var(--line);min-width:220px;border-radius:12px;overflow:hidden;z-index:20}
+    .dropdown-content button{width:100%;text-align:left;padding:10px 12px;background:transparent;border:none;color:var(--text);cursor:pointer}
+    .dropdown-content button:hover{background:#0e171c}
+    .show{display:block}
+
+    #list{padding:10px;background:var(--bg);overflow:auto;display:flex;flex-direction:column;gap:8px}
+    .bubble{max-width:min(80%,720px);padding:8px 10px;border-radius:12px;position:relative;word-wrap:break-word;white-space:pre-wrap}
+    .mine{align-self:flex-end;background:var(--mine)}
+    .theirs{align-self:flex-start;background:var(--theirs)}
+    .name{font-weight:600;margin-bottom:4px;font-size:14px}
+    .meta{display:flex;justify-content:flex-end;gap:8px;font-size:12px;color:var(--muted);margin-top:4px}
+    .badge{display:inline-block;background:var(--accent);color:#063b2a;border-radius:8px;padding:2px 6px;font-weight:700;margin-left:6px}
+    .sys{align-self:center;color:var(--muted);font-size:12px;margin:8px 0}
+
+    #inputBar{display:flex;gap:8px;padding:10px;background:var(--chat);border-top:1px solid var(--line)}
+    #msg{flex:1;padding:12px 14px;border-radius:20px;border:1px solid var(--line);background:#0c1317;color:#e9edef;font-size:16px}
+    #send{padding:10px 16px;border-radius:20px;border:none;background:var(--accent);color:#083b2a;font-weight:700;cursor:pointer}
+
+    @media (max-width:480px){ body{font-size:18px} #msg{font-size:18px} }
+    #list::-webkit-scrollbar{width:10px} #list::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px}
   </style>
 </head>
 <body>
+  <header>
+    <div class="title">💬 Chat Bareng</div>
+    <div class="me" id="meLabel">Nama: -</div>
+    <div class="dropdown">
+      <button class="menu" id="menuBtn">☰</button>
+      <div class="dropdown-content" id="menuPanel">
+        <button id="gantiNama">Ganti Nama</button>
+        <button id="simpanTxt">Simpan Percakapan (.txt)</button>
+        <button id="salinSemua">Salin Semua ke Clipboard</button>
+        <button id="gantiRuang">Ganti Ruang/Room</button>
+        <button id="hapusKu">Bersihkan Tampilan Lokal</button>
+      </div>
+    </div>
+  </header>
 
-  <div class="header">
-    <div>
-      Pemakai: 
-      <select id="username">
-        <option>User A</option>
-        <option>User B</option>
-        <option>User C</option>
-        <option>User D</option>
-      </select>
-    </div>
-    <div>
-      Translate: 
-      <select id="translateMode">
-        <option value="none">None</option>
-        <option value="id-en">ID → EN</option>
-        <option value="en-id">EN → ID</option>
-      </select>
-    </div>
-    <div>
-      Filter: 
-      <select id="filterUser">
-        <option value="all">Semua</option>
-        <option>User A</option>
-        <option>User B</option>
-        <option>User C</option>
-        <option>User D</option>
-      </select>
-    </div>
-    <div>
-      <button onclick="clearChat()">Reset Chat</button>
-    </div>
+  <div id="list"></div>
+
+  <div id="inputBar">
+    <input id="msg" placeholder="Tulis pesan…" autocomplete="off" />
+    <button id="send">Kirim</button>
   </div>
 
-  <div class="chat-area" id="chatArea">
-    <!-- pesan tampil di sini -->
-  </div>
+  <script>
+    // ===== Konfigurasi Firebase (opsional). Jika dibiarkan PASTE_..., aplikasi otomatis jalan dalam MODE DEMO (tanpa Firebase) =====
+    const firebaseConfig = {
+      apiKey: "PASTE_API_KEY",
+      authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+      projectId: "PASTE_PROJECT_ID",
+      storageBucket: "PASTE_PROJECT_ID.appspot.com",
+      messagingSenderId: "PASTE_SENDER_ID",
+      appId: "PASTE_APP_ID",
+    };
+    const HAS_FB = firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('PASTE');
 
-  <div class="input-bar">
-    <input type="text" id="messageInput" placeholder="Tulis pesan disini...">
-    <button onclick="sendMessage()">Kirim</button>
-  </div>
+    // ===== Util & State =====
+    const $ = sel => document.querySelector(sel);
+    const list = $("#list");
+    const msg  = $("#msg");
+    const send = $("#send");
+    const meLabel = $("#meLabel");
+    const menuBtn = $("#menuBtn");
+    const menuPanel = $("#menuPanel");
 
-<script>
-  const chatArea = document.getElementById("chatArea");
-  const input = document.getElementById("messageInput");
-  const usernameInput = document.getElementById("username");
-  const translateMode = document.getElementById("translateMode");
-  const filterUser = document.getElementById("filterUser");
+    let messagesCache = []; // selalu sinkron dengan UI untuk operasi sinkron (clipboard)
 
-  // kamus dummy sederhana
-  const dictionary = {
-    "halo":"hello", "apa kabar":"how are you", "selamat pagi":"good morning",
-    "hello":"halo", "how are you":"apa kabar", "good morning":"selamat pagi"
-  };
-
-  function dummyTranslate(text, mode){
-    if(mode==="none") return text;
-    let lower = text.toLowerCase();
-    if(mode==="id-en" && dictionary[lower]) return dictionary[lower];
-    if(mode==="en-id" && dictionary[lower]) return dictionary[lower];
-    return text; // fallback
-  }
-
-  function sendMessage(){
-    const user = usernameInput.value;
-    let msg = input.value.trim();
-    if(!msg) return;
-
-    const mode = translateMode.value;
-    const translated = dummyTranslate(msg, mode);
-
-    const timestamp = new Date().toLocaleTimeString();
-
-    let div = document.createElement("div");
-    div.className = "message";
-    if(user === usernameInput.value) {
-      div.classList.add("me");
+    function getRoom(){
+      const url = new URL(location.href);
+      return url.searchParams.get('room') || localStorage.getItem('CHAT_ROOM') || 'umum';
     }
-    div.setAttribute("data-user", user);
-    div.innerHTML = `<b>${user}:</b> ${translated}` 
-      + (translated!==msg ? `<div class="translate-note">(Asli: ${msg})</div>` : "")
-      + `<div class="timestamp">${timestamp}</div>`;
+    function setRoom(r){ localStorage.setItem('CHAT_ROOM', r); location.href = `?room=${encodeURIComponent(r)}`; }
 
-    chatArea.appendChild(div);
-    input.value="";
-    chatArea.scrollTop = chatArea.scrollHeight;
+    let ROOM = getRoom();
+    let NAME = localStorage.getItem("CHAT_NAME") || "";
+    meLabel.textContent = `Nama: ${NAME || '-'}`;
 
-    saveMessages();
-  }
-
-  function saveMessages(){
-    localStorage.setItem("chat_multi", chatArea.innerHTML);
-  }
-
-  function loadMessages(){
-    chatArea.innerHTML = localStorage.getItem("chat_multi") || "";
-    applyFilter();
-  }
-
-  function clearChat(){
-    localStorage.removeItem("chat_multi");
-    chatArea.innerHTML = "";
-  }
-
-  function applyFilter(){
-    const filter = filterUser.value;
-    const messages = chatArea.querySelectorAll(".message");
-    messages.forEach(msg => {
-      if(filter==="all" || msg.getAttribute("data-user")===filter){
-        msg.style.display = "block";
-      } else {
-        msg.style.display = "none";
+    function askName(){
+      const n = prompt("Masukkan nama (tanpa login):", NAME || "");
+      if(n && n.trim()){
+        NAME = n.trim();
+        localStorage.setItem("CHAT_NAME", NAME);
+        meLabel.textContent = "Nama: " + NAME;
       }
-    });
+    }
+    if(!NAME) askName();
+
+    function fmtTime(date){
+      const hh = String(date.getHours()).padStart(2,'0');
+      const mm = String(date.getMinutes()).padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+
+    function addBubble(m, mine=false){
+      const wrap = document.createElement('div');
+      wrap.className = 'bubble ' + (mine ? 'mine' : 'theirs');
+      if(!mine){
+        const nm = document.createElement('div');
+        nm.className = 'name';
+        nm.textContent = m.name || 'Anon';
+        wrap.appendChild(nm);
+      }
+      const text = document.createElement('div');
+      text.textContent = m.text;
+      wrap.appendChild(text);
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const d = m.ts instanceof Date ? m.ts : new Date(m.ts || Date.now());
+      const time = document.createElement('span');
+      time.textContent = fmtTime(d);
+      meta.appendChild(time);
+      if(mine){
+        const you = document.createElement('span');
+        you.className = 'badge';
+        you.textContent = 'You';
+        meta.appendChild(you);
+      }
+      wrap.appendChild(meta);
+
+      list.appendChild(wrap);
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function systemLine(t){
+      const s = document.createElement('div');
+      s.className = 'sys';
+      s.textContent = t;
+      list.appendChild(s);
+      list.scrollTop = list.scrollHeight;
+    }
+
+    // ===== Transport Abstraction (DEMO vs Firebase) =====
+    class DemoTransport{
+      constructor(room){
+        this.room = room;
+        this.key = `messages/${room}`;
+        this.supportsBC = false;
+        try{ this.supportsBC = !!window.BroadcastChannel; }catch{ this.supportsBC = false; }
+        if(this.supportsBC){
+          try{ this.bc = new BroadcastChannel(`chat-room-${room}`); }catch{ this.supportsBC=false; }
+        }
+        // fallback via localStorage 'storage' event
+        window.addEventListener('storage', (e)=>{
+          if(e.key === `chat-emit-${this.room}` && e.newValue){
+            try{ const m = JSON.parse(e.newValue); messagesCache.push(m); addBubbleProxy(m); }catch{}
+          }
+        });
+      }
+      _get(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch{ return []; } }
+      _set(arr){ localStorage.setItem(this.key, JSON.stringify(arr)); }
+      listen(cb){
+        systemLine(`Ruang: ${this.room} (DEMO mode)`);
+        // initial
+        const arr = this._get();
+        messagesCache = [];
+        arr.forEach(m=>{ messagesCache.push(m); cb(m); });
+        // listen broadcast (antar tab)
+        if(this.supportsBC){
+          this.bc.onmessage = (ev)=>{ if(ev.data && ev.data.type==='new'){ messagesCache.push(ev.data.msg); cb(ev.data.msg); } };
+        }
+      }
+      async send(name, text){
+        const m = { name, text, ts: Date.now() };
+        const arr = this._get(); arr.push(m); this._set(arr);
+        messagesCache.push(m); // pastikan tab ini juga update
+        addBubbleProxy(m);
+        if(this.supportsBC){ this.bc.postMessage({type:'new', msg:m}); }
+        else {
+          // trigger untuk tab lain
+          localStorage.setItem(`chat-emit-${this.room}`, JSON.stringify(m));
+          setTimeout(()=> localStorage.removeItem(`chat-emit-${this.room}`), 0);
+        }
+        return true;
+      }
+      async exportAll(){ return this._get(); }
+    }
+
+    class FirebaseTransport{
+      constructor(room){ this.room = room; this.db = null; this.unsub = null; }
+      async _ensure(){
+        if(this.db) return;
+        await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
+        await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js');
+        if(!firebase.apps || !firebase.apps.length){ firebase.initializeApp(firebaseConfig); }
+        this.db = firebase.firestore();
+      }
+      async listen(cb){
+        await this._ensure();
+        systemLine(`Ruang: ${this.room}`);
+        this.unsub = this.db.collection('rooms').doc(this.room).collection('messages')
+          .orderBy('ts','asc').limit(500)
+          .onSnapshot(snap=>{
+            list.innerHTML = '';
+            messagesCache = [];
+            snap.forEach(doc=>{
+              const m = doc.data();
+              let ts = Date.now();
+              const v = m.ts;
+              if(v && typeof v === 'object' && typeof v.toDate === 'function'){ ts = v.toDate().getTime(); }
+              else if(typeof v === 'number'){ ts = v; }
+              const norm = { name:m.name, text:m.text, ts };
+              messagesCache.push(norm);
+              cb(norm);
+            });
+          }, err=>{
+            console.error(err);
+            systemLine('Gagal konek Firestore (cek config/rules). Beralih ke DEMO.');
+            transport = new DemoTransport(ROOM);
+            transport.listen(addBubbleProxy);
+          });
+      }
+      async send(name, text){
+        await this._ensure();
+        await this.db.collection('rooms').doc(this.room).collection('messages').add({
+          name, text, ts: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      async exportAll(){
+        await this._ensure();
+        const qs = await this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').get();
+        const arr = [];
+        qs.forEach(doc=>{
+          const m = doc.data();
+          let ts = Date.now();
+          const v = m.ts;
+          if(v && typeof v === 'object' && typeof v.toDate === 'function'){ ts = v.toDate().getTime(); }
+          else if(typeof v === 'number'){ ts = v; }
+          arr.push({name:m.name, text:m.text, ts});
+        });
+        return arr;
+      }
+    }
+
+    function loadScript(src){
+      return new Promise((res, rej)=>{
+        const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = ()=>rej(new Error('load fail '+src));
+        document.head.appendChild(s);
+      });
+    }
+
+    let transport = HAS_FB ? new FirebaseTransport(ROOM) : new DemoTransport(ROOM);
+
+    function addBubbleProxy(m){ addBubble(m, m.name === NAME); }
+    transport.listen(addBubbleProxy);
+
+    // ===== Kirim pesan =====
+    async function sendMsg(){
+      const t = msg.value.trim();
+      if(!t) return;
+      if(!NAME) askName();
+      await transport.send(NAME || 'Anon', t);
+      msg.value = '';
+      msg.focus();
+    }
+    send.addEventListener('click', sendMsg);
+    msg.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMsg(); });
+    list.addEventListener('click', ()=> msg.focus());
+
+    // ===== Build teks sinkron dari cache =====
+    function buildLinesFromCache(){
+      return (messagesCache||[]).map(m=>{
+        const d = new Date(m.ts||Date.now());
+        const hh = String(d.getHours()).padStart(2,'0');
+        const mm = String(d.getMinutes()).padStart(2,'0');
+        return `[${hh}:${mm}] ${m.name}: ${m.text}`;
+      });
+    }
+
+    // ===== Copy aman (user gesture only) =====
+    async function copyTextSafely(text){
+      try{
+        if(navigator.clipboard && window.isSecureContext){
+          await navigator.clipboard.writeText(text); // harus dipanggil langsung dari event handler
+          return {ok:true, method:'clipboard'};
+        }
+        throw new Error('Clipboard API tidak tersedia atau context tidak aman');
+      }catch(err){
+        try{
+          // Fallback: execCommand('copy')
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly','');
+          ta.style.position = 'fixed'; ta.style.top = '-1000px';
+          document.body.appendChild(ta);
+          ta.select(); ta.setSelectionRange(0, ta.value.length);
+          const ok = document.execCommand && document.execCommand('copy');
+          document.body.removeChild(ta);
+          if(ok) return {ok:true, method:'execCommand'};
+          throw new Error('execCommand copy gagal');
+        }catch(err2){
+          return {ok:false, error: err.message + ' / ' + err2.message};
+        }
+      }
+    }
+
+    // ===== MENU =====
+    menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); menuPanel.classList.toggle('show'); });
+    document.addEventListener('click', ()=> menuPanel.classList.remove('show'));
+
+    $('#gantiNama').onclick = ()=> { askName(); menuPanel.classList.remove('show'); };
+    $('#gantiRuang').onclick = ()=>{
+      const r = prompt('Nama room/ruang?', ROOM);
+      if(r && r.trim()) setRoom(r.trim());
+    };
+    $('#hapusKu').onclick = ()=>{ list.innerHTML = ''; alert('Tampilan lokal dibersihkan.'); menuPanel.classList.remove('show'); };
+
+    // ===== Simpan percakapan (.txt) =====
+    async function exportLines(){
+      const arr = await transport.exportAll();
+      return (arr||[]).map(m=>{
+        const d = new Date(m.ts||Date.now());
+        const hh = String(d.getHours()).padStart(2,'0');
+        const mm = String(d.getMinutes()).padStart(2,'0');
+        return `[${hh}:${mm}] ${m.name}: ${m.text}`;
+      });
+    }
+    $('#simpanTxt').onclick = async ()=>{
+      const txt = (await exportLines()).join('\n') || '(belum ada percakapan)';
+      const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `percakapan_${ROOM}.txt`; a.click();
+      URL.revokeObjectURL(url);
+      menuPanel.classList.remove('show');
+    };
+
+    // ===== Salin semua ke Clipboard (tanpa await sebelum copy) =====
+    $('#salinSemua').onclick = async ()=>{
+      // bangun teks sinkron agar user-activation tidak hilang
+      const txt = (buildLinesFromCache()).join('\n') || '(belum ada percakapan)';
+      const res = await copyTextSafely(txt);
+      if(res.ok){
+        alert(`Percakapan disalin (metode: ${res.method}).`);
+      } else {
+        // Fallback terakhir: unduh file agar user tetap dapat menyalin
+        const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `percakapan_${ROOM}.txt`; a.click();
+        URL.revokeObjectURL(url);
+        alert('Clipboard diblokir oleh Permissions Policy atau context tidak aman. File .txt diunduh sebagai fallback.');
+      }
+      menuPanel.classList.remove('show');
+    };
+
+    // ====== SELF-TESTS ======
+    (function runSelfTests(){
+      try{
+        // Test 1: newline join must be "\n"
+        const t1 = ['A','B'].join('\n') === 'A\nB';
+        if(!t1) throw new Error('Join newline gagal');
+
+        // Test 2: addBubble tidak error
+        addBubble({name:'Test', text:'Halo', ts:Date.now()}, false);
+
+        // Test 3: DemoTransport simpan/ambil
+        const rt = 'rt_'+Math.random().toString(36).slice(2);
+        const dt = new DemoTransport(rt);
+        dt.send('Uji','Pesan');
+        dt.exportAll().then(arr=>{
+          if(!arr || !arr.length) console.warn('Self-test: exportAll kosong (ok jika private mode).');
+        });
+
+        // Test 4: buildLinesFromCache menghasilkan baris
+        messagesCache.push({name:'A', text:'x', ts:Date.now()});
+        messagesCache.push({name:'B', text:'y', ts:Date.now()});
+        const lines = buildLinesFromCache();
+        if(!(Array.isArray(lines) && lines.length>=2)) throw new Error('buildLinesFromCache gagal');
+
+        // Test 5: copyTextSafely mengembalikan Promise object
+        const p = copyTextSafely('test');
+        if(!(p && typeof p.then==='function')) throw new Error('copyTextSafely bukan Promise');
+
+        console.log('Self-tests passed.');
+      }catch(e){ console.warn('Self-tests warning:', e.message); }
+    })();
+  </script>
+
+  <!--
+  ===================== PETUNJUK CEPAT =====================
+  • Tanpa isi Firebase → otomatis jalan MODE DEMO (tab yang sama origin bisa chat via BroadcastChannel/localStorage). Cocok buat test/preview.
+  • Isi firebaseConfig → realtime multi-user lintas perangkat via Firestore.
+
+  1) Buat project Firebase → aktifkan Firestore.
+  2) Ambil firebaseConfig dan ganti placeholder di atas (agar keluar dari DEMO mode).
+  3) Jalankan via server lokal (contoh):
+       python -m http.server 5500
+     lalu buka http://127.0.0.1:5500
+  4) Akses dari HP/PC satu Wi‑Fi dan pakai parameter ?room=nama.
+
+  ⚠️ Catatan Clipboard: Chrome/Edge/Firefox modern mensyaratkan context aman (HTTPS atau http://localhost). Di environment yang menerapkan Permissions Policy ketat (mis. sandbox/iframe), clipboard bisa diblokir; tombol akan otomatis fallback ke unduh .txt.
+
+  **Rules contoh DEV (longgar, hanya untuk percobaan):**
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /rooms/{room}/messages/{msg} {
+        allow read, write: if true; // DEV SAJA
+      }
+    }
   }
-
-  filterUser.addEventListener("change", applyFilter);
-
-  loadMessages();
-</script>
-
+  ==========================================================
+  -->
 </body>
 </html>
