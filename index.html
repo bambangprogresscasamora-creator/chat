@@ -46,9 +46,10 @@
       <button class="menu" id="menuBtn">☰</button>
       <div class="dropdown-content" id="menuPanel">
         <button id="gantiNama">Ganti Nama</button>
+        <button id="gantiRuang">Ganti Ruang/Room</button>
+        <button id="salinLink">Salin Link Room</button>
         <button id="simpanTxt">Simpan Percakapan (.txt)</button>
         <button id="salinSemua">Salin Semua ke Clipboard</button>
-        <button id="gantiRuang">Ganti Ruang/Room</button>
         <button id="hapusKu">Bersihkan Tampilan Lokal</button>
       </div>
     </div>
@@ -64,14 +65,13 @@
   <script>
     // ===== Konfigurasi Firebase (opsional). Jika dibiarkan PASTE_..., aplikasi otomatis jalan dalam MODE DEMO (tanpa Firebase) =====
     const firebaseConfig = {
-  apiKey: "AIzaSyBvLYsdcQbaS37udt-UaDGfmuFR2-lMIxM",
-  authDomain: "chating-84a2c.firebaseapp.com",
-  projectId: "chating-84a2c",
-  storageBucket: "chating-84a2c.firebasestorage.app",
-  messagingSenderId: "245740844693",
-  appId: "1:245740844693:web:04d86c550bed384546cd9c",
-  measurementId: "G-S3EWTC7160"
-};
+      apiKey: "PASTE_API_KEY",
+      authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+      projectId: "PASTE_PROJECT_ID",
+      storageBucket: "PASTE_PROJECT_ID.appspot.com",
+      messagingSenderId: "PASTE_SENDER_ID",
+      appId: "PASTE_APP_ID",
+    };
     const HAS_FB = firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('PASTE');
 
     // ===== Util & State =====
@@ -85,11 +85,20 @@
 
     let messagesCache = []; // selalu sinkron dengan UI untuk operasi sinkron (clipboard)
 
+    function sanitizeRoom(r){ return (r||'').toString().trim().toLowerCase().replace(/[^a-z0-9-_]/g,'-') || 'umum'; }
     function getRoom(){
       const url = new URL(location.href);
-      return url.searchParams.get('room') || localStorage.getItem('CHAT_ROOM') || 'umum';
+      const q = url.searchParams.get('room');
+      const stored = localStorage.getItem('CHAT_ROOM');
+      return sanitizeRoom(q || stored || 'umum');
     }
-    function setRoom(r){ localStorage.setItem('CHAT_ROOM', r); location.href = `?room=${encodeURIComponent(r)}`; }
+    function setRoom(r){
+      const norm = sanitizeRoom(r);
+      localStorage.setItem('CHAT_ROOM', norm);
+      const url = new URL(location.href);
+      url.searchParams.set('room', norm);
+      location.href = url.toString();
+    }`; }
 
     let ROOM = getRoom();
     let NAME = localStorage.getItem("CHAT_NAME") || "";
@@ -171,6 +180,7 @@
       _set(arr){ localStorage.setItem(this.key, JSON.stringify(arr)); }
       listen(cb){
         systemLine(`Ruang: ${this.room} (DEMO mode — tidak realtime lintas perangkat). Gunakan Firebase agar sinkron antar HP/PC.`);
+        systemLine(`Path: rooms/${this.room}`);
         // initial
         const arr = this._get();
         messagesCache = [];
@@ -208,6 +218,7 @@
       async listen(cb){
         await this._ensure();
         systemLine(`Ruang: ${this.room}`);
+        if (firebaseConfig && firebaseConfig.projectId) systemLine(`Project: ${firebaseConfig.projectId} • Path: rooms/${this.room}`);
         this.unsub = this.db.collection('rooms').doc(this.room).collection('messages')
           .orderBy('ts','asc').limit(500)
           .onSnapshot(snap=>{
@@ -326,6 +337,16 @@
     $('#gantiNama').onclick = ()=> { askName(); menuPanel.classList.remove('show'); };
     $('#gantiRuang').onclick = ()=>{
       const r = prompt('Nama room/ruang?', ROOM);
+      if(r && r.trim()) setRoom(r.trim());
+    };
+    $('#salinLink').onclick = ()=>{
+      const url = new URL(location.href);
+      url.searchParams.set('room', ROOM);
+      const u = url.toString();
+      const ta = document.createElement('textarea'); ta.value = u; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      alert('Link room disalin: ' + u);
+      menuPanel.classList.remove('show');
+    };
       if(r && r.trim()) setRoom(r.trim());
     };
     $('#hapusKu').onclick = ()=>{ list.innerHTML = ''; alert('Tampilan lokal dibersihkan.'); menuPanel.classList.remove('show'); };
