@@ -1,70 +1,67 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Chat Bareng — HTML Only</title>
-  <style>
-    :root{ --bg:#0b141a; --chat:#111b21; --mine:#005c4b; --theirs:#202c33; --text:#e9edef; --muted:#8696a0; --accent:#25d366; --line:#2a3942 }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;display:grid;grid-template-rows:auto 1fr auto}
-    header{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--chat);border-bottom:1px solid var(--line)}
-    .title{font-weight:700}
-    .me{margin-left:auto;font-size:14px;color:var(--muted)}
-    .dropdown{position:relative}
-    .menu{margin-left:8px;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer}
-    .dropdown-content{display:none;position:absolute;right:0;margin-top:8px;background:var(--chat);border:1px solid var(--line);min-width:240px;border-radius:12px;overflow:hidden;z-index:20}
-    .dropdown-content button{width:100%;text-align:left;padding:10px 12px;background:transparent;border:none;color:var(--text);cursor:pointer}
-    .dropdown-content button:hover{background:#0e171c}
-    .show{display:block}
-    #list{padding:10px;background:var(--bg);overflow:auto;display:flex;flex-direction:column;gap:8px}
-    .bubble{max-width:min(80%,720px);padding:8px 10px;border-radius:12px;position:relative;word-wrap:break-word;white-space:pre-wrap}
-    .mine{align-self:flex-end;background:var(--mine)}
-    .theirs{align-self:flex-start;background:var(--theirs)}
-    .name{font-weight:600;margin-bottom:4px;font-size:14px}
-    .meta{display:flex;justify-content:flex-end;gap:8px;font-size:12px;color:var(--muted);margin-top:4px}
-    .badge{display:inline-block;background:var(--accent);color:#063b2a;border-radius:8px;padding:2px 6px;font-weight:700;margin-left:6px}
-    .sys{align-self:center;color:var(--muted);font-size:12px;margin:8px 0}
-    #inputBar{display:flex;gap:8px;padding:10px;background:var(--chat);border-top:1px solid var(--line)}
-    #msg{flex:1;padding:12px 14px;border-radius:20px;border:1px solid var(--line);background:#0c1317;color:#e9edef;font-size:16px}
-    #send{padding:10px 16px;border-radius:20px;border:none;background:var(--accent);color:#083b2a;font-weight:700;cursor:pointer}
-    @media (max-width:480px){ body{font-size:18px} #msg{font-size:18px} }
-    #list::-webkit-scrollbar{width:10px} #list::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px}
-    body[data-pending="1"] header::after{content:"menyimpan…";margin-left:10px;color:#93c5fd;font-size:12px}
-    #debugBar{position:fixed;bottom:6px;left:6px;font:12px system-ui;background:rgba(32,44,51,.9);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:#cbd5e1;display:none}
-    #overlayBusy{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
-    #overlayBusy span{background:#0e171c;border:1px solid var(--line);padding:10px 14px;border-radius:12px;color:#cbd5e1;font:14px system-ui}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Chat Bareng — Suara + Lampiran</title>
+<style>
+  :root{--bg:#0b141a;--chat:#111b21;--mine:#005c4b;--theirs:#202c33;--text:#e9edef;--muted:#8696a0;--accent:#25d366;--line:#2a3942}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui;display:grid;grid-template-rows:auto 1fr auto}
+  header{display:flex;align-items:center;gap:12px;padding:10px;background:var(--chat);border-bottom:1px solid var(--line)}
+  .title{font-weight:700} .me{margin-left:auto;color:var(--muted)}
+  .menu{margin-left:8px;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer}
+  .dropdown{position:relative} .dropdown-content{display:none;position:absolute;right:0;margin-top:8px;background:var(--chat);border:1px solid var(--line);min-width:240px;border-radius:12px;overflow:hidden;z-index:20}
+  .dropdown-content button{width:100%;text-align:left;padding:10px 12px;background:transparent;border:none;color:var(--text);cursor:pointer}
+  .dropdown-content button:hover{background:#0e171c} .show{display:block}
+  #list{padding:10px;background:var(--bg);overflow:auto;display:flex;flex-direction:column;gap:8px}
+  .bubble{max-width:min(80%,720px);padding:8px 10px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+  .mine{align-self:flex-end;background:var(--mine)} .theirs{align-self:flex-start;background:var(--theirs)}
+  .name{font-weight:600;margin-bottom:4px;font-size:14px} .meta{display:flex;justify-content:flex-end;gap:8px;font-size:12px;color:var(--muted);margin-top:4px}
+  .badge{display:inline-block;background:var(--accent);color:#063b2a;border-radius:8px;padding:2px 6px;font-weight:700;margin-left:6px}
+  .sys{align-self:center;color:var(--muted);font-size:12px;margin:8px 0}
+  #inputBar{display:flex;gap:8px;padding:10px;background:var(--chat);border-top:1px solid var(--line)}
+  #msg{flex:1;padding:12px 14px;border-radius:20px;border:1px solid var(--line);background:#0c1317;color:#e9edef}
+  #send,#attach{padding:10px 16px;border-radius:20px;border:none;font-weight:700;cursor:pointer}
+  #send{background:var(--accent);color:#083b2a} #attach{background:#0d171c;color:#cbd5e1;border:1px solid var(--line)}
+  .bubble img{max-width:100%;border-radius:10px;display:block;margin-top:6px}
+  #debugBar{position:fixed;bottom:6px;left:6px;font:12px system-ui;background:rgba(32,44,51,.9);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:#cbd5e1;display:none}
+  #overlayBusy{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
+  #overlayBusy span{background:#0e171c;border:1px solid var(--line);padding:10px 14px;border-radius:12px;color:#cbd5e1;font:14px system-ui}
+  @media (max-width:480px){body{font-size:18px}#msg{font-size:18px}}
+</style>
 </head>
 <body>
-  <header>
-    <div class="title">💬 Chat Bareng <span id="modeBadge" style="font-size:12px;margin-left:8px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;opacity:.85"></span></div>
-    <div class="me" id="meLabel">Nama: -</div>
-    <div class="dropdown">
-      <button class="menu" id="menuBtn">☰</button>
-      <div class="dropdown-content" id="menuPanel">
-        <button id="gantiNama">Ganti Nama</button>
-        <button id="gantiRuang">Ganti Ruang/Room</button>
-        <button id="salinLink">Salin Link Room</button>
-        <button id="simpanTxt">Simpan Percakapan (.txt)</button>
-        <button id="salinSemua">Salin Semua ke Clipboard</button>
-        <button id="hapusRoom">Hapus semua pesan di room ini</button>
-        <button id="hapusKu">Bersihkan Tampilan Lokal</button>
-      </div>
+<header>
+  <div class="title">💬 Chat Bareng <span id="modeBadge" style="font-size:12px;margin-left:8px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;opacity:.85"></span></div>
+  <div class="me" id="meLabel">Nama: -</div>
+  <div class="dropdown">
+    <button class="menu" id="menuBtn">☰</button>
+    <div class="dropdown-content" id="menuPanel">
+      <button id="gantiNama">Ganti Nama</button>
+      <button id="gantiRuang">Ganti Ruang/Room</button>
+      <button id="toggleSound">Bunyi notifikasi: <span id="soundState">on</span></button>
+      <button id="salinLink">Salin Link Room</button>
+      <button id="simpanTxt">Simpan Percakapan (.txt)</button>
+      <button id="salinSemua">Salin Semua ke Clipboard</button>
+      <button id="hapusRoom">Hapus semua pesan di room ini</button>
+      <button id="hapusKu">Bersihkan Tampilan Lokal</button>
     </div>
-  </header>
-  <div id="list"></div>
-  <div id="inputBar">
-    <input id="msg" placeholder="Tulis pesan…" autocomplete="off" />
-    <button id="send">Kirim</button>
   </div>
-  <div id="debugBar"></div>
-  <div id="overlayBusy"><span>Memproses…</span></div>
+</header>
+<div id="list"></div>
+<div id="inputBar">
+  <input id="msg" placeholder="Tulis pesan…" autocomplete="off" />
+  <input id="filePick" type="file" accept="image/*,.pdf,.txt,.doc,.docx" style="display:none" />
+  <button id="attach" title="Lampirkan gambar/berkas">📎</button>
+  <button id="send">Kirim</button>
+</div>
+<div id="debugBar"></div>
+<div id="overlayBusy"><span>Memproses…</span></div>
 
-  <script>
-    // ---- Firebase config (isi untuk mode online; biarkan PASTE_… untuk DEMO) ----
-    const firebaseConfig = {
+<script>
+// ---- Firebase config ----
+const firebaseConfig = {
   apiKey: "AIzaSyBvLYsdcQbaS37udt-UaDGfmuFR2-lMIxM",
   authDomain: "chating-84a2c.firebaseapp.com",
   projectId: "chating-84a2c",
@@ -73,105 +70,78 @@
   appId: "1:245740844693:web:04d86c550bed384546cd9c",
   measurementId: "G-S3EWTC7160"
 };
-    const HAS_FB = firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('PASTE');
+const HAS_FB=firebaseConfig.apiKey&&!String(firebaseConfig.apiKey).startsWith('PASTE');
 
-    // ---- DOM helpers & state ----
-    const $ = s=>document.querySelector(s);
-    const list=$('#list'), msg=$('#msg'), send=$('#send'), meLabel=$('#meLabel'), menuBtn=$('#menuBtn'), menuPanel=$('#menuPanel'), modeBadge=$('#modeBadge'), debugBar=$('#debugBar'), overlayBusy=$('#overlayBusy');
-    let messagesCache=[];
-    function setBadge(t,bg){ modeBadge.textContent=t; modeBadge.style.background=bg; }
-    function setUIBusy(b){ try{send.disabled=!!b; msg.disabled=!!b;}catch{} overlayBusy.style.display=b?'flex':'none'; }
+// ---- DOM helpers & state ----
+const $=s=>document.querySelector(s);
+const list=$('#list'),msg=$('#msg'),send=$('#send'),meLabel=$('#meLabel'),menuBtn=$('#menuBtn'),menuPanel=$('#menuPanel'),modeBadge=$('#modeBadge'),debugBar=$('#debugBar'),overlayBusy=$('#overlayBusy');
+let messagesCache=[]; let SOUND=(localStorage.getItem('CHAT_SOUND')||'on')==='on';
+function setBadge(t,bg){modeBadge.textContent=t;modeBadge.style.background=bg}
+function setUIBusy(b){try{send.disabled=!!b;msg.disabled=!!b}catch{} overlayBusy.style.display=b?'flex':'none'}
+function playBeep(){ if(!SOUND) return; try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.08,ac.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+0.25); o.start(); o.stop(ac.currentTime+0.26);}catch{} }
 
-    function sanitizeRoom(r){ return (r||'').toString().trim().toLowerCase().replace(/[^a-z0-9-_]/g,'-')||'umum'; }
-    function getRoom(){ const u=new URL(location.href); const q=u.searchParams.get('room'); const s=localStorage.getItem('CHAT_ROOM'); return sanitizeRoom(q||s||'umum'); }
-    function setRoom(r){ const n=sanitizeRoom(r); localStorage.setItem('CHAT_ROOM',n); const u=new URL(location.href); u.searchParams.set('room',n); location.href=u.toString(); }
-    let ROOM=getRoom(); let NAME=localStorage.getItem('CHAT_NAME')||''; meLabel.textContent=`Nama: ${NAME||'-'}`;
-    function askName(){ const n=prompt('Masukkan nama (tanpa login):', NAME||''); if(n&&n.trim()){ NAME=n.trim(); localStorage.setItem('CHAT_NAME',NAME); meLabel.textContent='Nama: '+NAME; } }
-    if(!NAME) askName();
+function sanitizeRoom(r){return (r||'').toString().trim().toLowerCase().replace(/[^a-z0-9-_]/g,'-')||'umum'}
+function getRoom(){const u=new URL(location.href);const q=u.searchParams.get('room');const s=localStorage.getItem('CHAT_ROOM');return sanitizeRoom(q||s||'umum')}
+function setRoom(r){const n=sanitizeRoom(r);localStorage.setItem('CHAT_ROOM',n);const u=new URL(location.href);u.searchParams.set('room',n);location.href=u.toString()}
+let ROOM=getRoom(); let NAME=localStorage.getItem('CHAT_NAME')||''; meLabel.textContent=`Nama: ${NAME||'-'}`;
+function askName(){const n=prompt('Masukkan nama (tanpa login):',NAME||''); if(n&&n.trim()){NAME=n.trim(); localStorage.setItem('CHAT_NAME',NAME); meLabel.textContent='Nama: '+NAME;}}
+if(!NAME) askName();
 
-    function fmtTime(d){ const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0'); return `${hh}:${mm}`; }
-    function addBubble(m, mine=false){
-      const w=document.createElement('div'); w.className='bubble '+(mine?'mine':'theirs');
-      if(!mine){ const nm=document.createElement('div'); nm.className='name'; nm.textContent=m.name||'Anon'; w.appendChild(nm); }
-      const tt=document.createElement('div'); tt.textContent=m.text; w.appendChild(tt);
-      const meta=document.createElement('div'); meta.className='meta'; const d=m.ts instanceof Date?m.ts:new Date(m.ts||Date.now()); const t=document.createElement('span'); t.textContent=fmtTime(d); meta.appendChild(t);
-      if(mine){ const you=document.createElement('span'); you.className='badge'; you.textContent='You'; meta.appendChild(you); }
-      w.appendChild(meta); list.appendChild(w); list.scrollTop=list.scrollHeight;
+function fmtTime(d){const hh=String(d.getHours()).padStart(2,'0');const mm=String(d.getMinutes()).padStart(2,'0');return `${hh}:${mm}`}
+function addBubble(m,mine=false){
+  const w=document.createElement('div'); w.className='bubble '+(mine?'mine':'theirs');
+  if(!mine){const nm=document.createElement('div'); nm.className='name'; nm.textContent=m.name||'Anon'; w.appendChild(nm)}
+  const tt=document.createElement('div'); tt.textContent=m.text|| (m.file?(m.file.name||''): ''); w.appendChild(tt);
+  if(m.file&&m.file.url){ if(m.file.type&&m.file.type.startsWith('image/')){const img=document.createElement('img'); img.src=m.file.url; img.alt=m.file.name||'gambar'; w.appendChild(img);} else { const a=document.createElement('a'); a.href=m.file.url; a.target='_blank'; a.rel='noopener'; a.textContent=`📎 ${m.file.name||'file'}`; w.appendChild(a);} }
+  const meta=document.createElement('div'); meta.className='meta'; const d=m.ts instanceof Date?m.ts:new Date(m.ts||Date.now()); const t=document.createElement('span'); t.textContent=fmtTime(d); meta.appendChild(t);
+  if(mine){const you=document.createElement('span'); you.className='badge'; you.textContent='You'; meta.appendChild(you)}
+  w.appendChild(meta); list.appendChild(w); list.scrollTop=list.scrollHeight;
+}
+function systemLine(t){const s=document.createElement('div'); s.className='sys'; s.textContent=t; list.appendChild(s); list.scrollTop=list.scrollHeight}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('load fail '+src)); document.head.appendChild(s)})}
+
+// ---- Firebase transport ----
+class FirebaseTransport{
+  constructor(room){this.room=room;this.db=null;this.storage=null;this.unsub=null;this.seen=new Set();this.deleting=false}
+  async _ensure(){ if(this.db) return; await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js'); await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js'); await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js'); if(!firebase.apps||!firebase.apps.length) firebase.initializeApp(firebaseConfig); this.db=firebase.firestore(); this.storage=firebase.storage(); }
+  async listen(cb){ await this._ensure(); systemLine(`Ruang: ${this.room}`); this.unsub=this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').limit(500).onSnapshot({includeMetadataChanges:true}, snap=>{ if(this.deleting) return; let removed=false; snap.docChanges().forEach(ch=>{if(ch.type==='removed') removed=true}); if(removed){this.seen.clear();messagesCache=[];list.innerHTML=''} snap.docChanges().forEach(ch=>{ if(ch.type==='added'||ch.type==='modified'){ const m=ch.doc.data(); let ts= typeof m.ts==='number'?m.ts:(m.serverTs&&m.serverTs.toDate?m.serverTs.toDate().getTime():Date.now()); const norm={name:m.name,text:m.text,ts,file:m.file||null}; if(!this.seen.has(ch.doc.id)){ this.seen.add(ch.doc.id); messagesCache.push(norm); cb(norm);} } }); }); }
+  async send(name,text,file){ await this._ensure(); await this.db.collection('rooms').doc(this.room).collection('messages').add({name,text:text||'',file:file||null,ts:Date.now(),serverTs:firebase.firestore.FieldValue.serverTimestamp()}) }
+  async clearAll(){ await this._ensure(); this.deleting=true; setUIBusy(true); const col=this.db.collection('rooms').doc(this.room).collection('messages'); try{ while(true){ const qs=await col.orderBy('ts','asc').limit(400).get({source:'server'}); if(qs.empty) break; const b=this.db.batch(); qs.forEach(d=>b.delete(d.ref)); await b.commit(); } await this.db.waitForPendingWrites(); } finally { this.seen.clear(); messagesCache=[]; list.innerHTML=''; this.deleting=false; setUIBusy(false);} systemLine('Semua pesan di room ini sudah dihapus.')} }
+
+// ---- Demo transport ----
+class DemoTransport{
+  constructor(room){ this.room=room; this.key=`messages/${room}`; this.supportsBC=false; try{this.supportsBC=!!window.BroadcastChannel}catch{} if(this.supportsBC){ try{this.bc=new BroadcastChannel(`chat-room-${room}`)}catch{ this.supportsBC=false } } window.addEventListener('storage',e=>{ if(e.key===`chat-emit-${this.room}`&&e.newValue){ try{const m=JSON.parse(e.newValue); messagesCache.push(m); addBubbleProxy(m)}catch{} } if(e.key===`chat-clear-${this.room}`&&e.newValue){ messagesCache=[]; list.innerHTML='' } }) }
+  _get(){ try{return JSON.parse(localStorage.getItem(this.key)||'[]')}catch{return []} }
+  _set(a){ localStorage.setItem(this.key, JSON.stringify(a)) }
+  listen(cb){ systemLine(`Ruang: ${this.room} (DEMO mode — tidak realtime lintas perangkat).`); const a=this._get(); messagesCache=[]; a.forEach(m=>{messagesCache.push(m); cb(m)}); if(this.supportsBC){ this.bc.onmessage=ev=>{ if(ev.data&&ev.data.type==='new'){messagesCache.push(ev.data.msg); cb(ev.data.msg)} if(ev.data&&ev.data.type==='clear'){ messagesCache=[]; list.innerHTML='' } } } }
+  async send(name,text,file){ const m={name,text:text||'',ts:Date.now(),file:file||null}; const a=this._get(); a.push(m); this._set(a); messagesCache.push(m); addBubbleProxy(m); if(this.supportsBC){ this.bc.postMessage({type:'new',msg:m}) } else { localStorage.setItem(`chat-emit-${this.room}`,JSON.stringify(m)); setTimeout(()=>localStorage.removeItem(`chat-emit-${this.room}`),0) } }
+  async clearAll(){ this._set([]); messagesCache=[]; list.innerHTML=''; if(this.supportsBC){ this.bc.postMessage({type:'clear'}) } else { localStorage.setItem(`chat-clear-${this.room}`,'1'); setTimeout(()=>localStorage.removeItem(`chat-clear-${this.room}`),0) } systemLine('Semua pesan (lokal) untuk room ini sudah dihapus.') }
+  async exportAll(){ return this._get() }
+}
+
+// ---- boot ----
+let transport=HAS_FB?new FirebaseTransport(ROOM):new DemoTransport(ROOM);
+setBadge(HAS_FB?'FIREBASE (online)':'DEMO (lokal)', HAS_FB?'#134e4a':'#3f3f46');
+function addBubbleProxy(m){ const mine=m.name===NAME; addBubble(m,mine); if(!mine) playBeep(); }
+transport.listen(addBubbleProxy);
+
+// ---- input ----
+async function sendMsg(){
+  const t=msg.value.trim();
+  const fInput=document.getElementById('filePick');
+  const file=fInput.files&&fInput.files[0]?fInput.files[0]:null;
+  if(!t && !file) return; if(!NAME) askName();
+  let fileMeta=null;
+  if(file){
+    if(HAS_FB){
+      try{ setUIBusy(true); await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js'); const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const ref=firebase.storage().ref().child(`rooms/${ROOM}/uploads/${Date.now()}_${safe}`); await ref.put(file); const url=await ref.getDownloadURL(); fileMeta={name:file.name,type:file.type,size:file.size,url}; }
+      catch(e){ alert('Upload gagal: '+e.message); console.error(e) }
+      finally{ setUIBusy(false) }
+    }else{
+      if(file.size>200*1024){ alert('DEMO: maksimal 200KB. Gunakan Firebase untuk upload besar.'); return }
+      const url=URL.createObjectURL(file); fileMeta={name:file.name,type:file.type,size:file.size,url}
     }
-    function systemLine(t){ const s=document.createElement('div'); s.className='sys'; s.textContent=t; list.appendChild(s); list.scrollTop=list.scrollHeight; }
-    function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('load fail '+src)); document.head.appendChild(s); }); }
-
-    // ---- Firebase transport ----
-    class FirebaseTransport{
-      constructor(room){ this.room=room; this.db=null; this.unsub=null; this.seen=new Set(); this.deleting=false; }
-      async _ensure(){ if(this.db) return; await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js'); await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js'); if(!firebase.apps||!firebase.apps.length) firebase.initializeApp(firebaseConfig); this.db=firebase.firestore(); }
-      async listen(cb){
-        await this._ensure(); systemLine(`Ruang: ${this.room}`);
-        this.unsub=this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').limit(500).onSnapshot({includeMetadataChanges:true}, snap=>{
-          if(this.deleting) return; // pause saat delete massal
-          let removed=false; snap.docChanges().forEach(ch=>{ if(ch.type==='removed') removed=true; });
-          if(removed){ this.seen.clear(); messagesCache=[]; list.innerHTML=''; }
-          snap.docChanges().forEach(ch=>{
-            if(ch.type==='added'||ch.type==='modified'){
-              const m=ch.doc.data(); let ts= typeof m.ts==='number'? m.ts : (m.serverTs&&m.serverTs.toDate? m.serverTs.toDate().getTime(): Date.now());
-              const norm={name:m.name, text:m.text, ts}; if(!this.seen.has(ch.doc.id)){ this.seen.add(ch.doc.id); messagesCache.push(norm); cb(norm); }
-            }
-          });
-          document.body.dataset.pending = snap.metadata.hasPendingWrites?'1':'0';
-        }, err=>{ console.error('[Firestore] onSnapshot error', err); systemLine('❌ Gagal langganan Firestore'); });
-      }
-      async send(name,text){ await this._ensure(); await this.db.collection('rooms').doc(this.room).collection('messages').add({ name,text, ts:Date.now(), serverTs:firebase.firestore.FieldValue.serverTimestamp() }); }
-      async clearAll(){ await this._ensure(); this.deleting=true; setUIBusy(true); const col=this.db.collection('rooms').doc(this.room).collection('messages');
-        try{ while(true){ const qs=await col.orderBy('ts','asc').limit(400).get({source:'server'}); if(qs.empty) break; const b=this.db.batch(); qs.forEach(d=>b.delete(d.ref)); await b.commit(); } await this.db.waitForPendingWrites(); }
-        finally{ this.seen.clear(); messagesCache=[]; list.innerHTML=''; this.deleting=false; setUIBusy(false); }
-        systemLine('Semua pesan di room ini sudah dihapus.'); }
-      async exportAll(){ await this._ensure(); const qs=await this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').get({source:'server'}); const arr=[]; qs.forEach(doc=>{ const m=doc.data(); const ts= typeof m.ts==='number'?m.ts:(m.serverTs&&m.serverTs.toDate?m.serverTs.toDate().getTime():Date.now()); arr.push({name:m.name,text:m.text,ts}); }); return arr; }
-    }
-
-    // ---- Demo transport (lokal) ----
-    class DemoTransport{
-      constructor(room){ this.room=room; this.key=`messages/${room}`; this.supportsBC=false; try{ this.supportsBC=!!window.BroadcastChannel; }catch{}
-        if(this.supportsBC){ try{ this.bc=new BroadcastChannel(`chat-room-${room}`);}catch{ this.supportsBC=false; } }
-        window.addEventListener('storage', e=>{ if(e.key===`chat-emit-${this.room}`&&e.newValue){ try{ const m=JSON.parse(e.newValue); messagesCache.push(m); addBubbleProxy(m);}catch{} } if(e.key===`chat-clear-${this.room}`&&e.newValue){ messagesCache=[]; list.innerHTML=''; } }); }
-      _get(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch{ return []; } }
-      _set(a){ localStorage.setItem(this.key, JSON.stringify(a)); }
-      listen(cb){ systemLine(`Ruang: ${this.room} (DEMO mode — tidak realtime lintas perangkat).`); const a=this._get(); messagesCache=[]; a.forEach(m=>{ messagesCache.push(m); cb(m); }); if(this.supportsBC){ this.bc.onmessage=ev=>{ if(ev.data&&ev.data.type==='new'){ messagesCache.push(ev.data.msg); cb(ev.data.msg); } if(ev.data&&ev.data.type==='clear'){ messagesCache=[]; list.innerHTML=''; } }; } }
-      async send(name,text){ const m={name,text,ts:Date.now()}; const a=this._get(); a.push(m); this._set(a); messagesCache.push(m); addBubbleProxy(m); if(this.supportsBC){ this.bc.postMessage({type:'new',msg:m}); } else { localStorage.setItem(`chat-emit-${this.room}`, JSON.stringify(m)); setTimeout(()=>localStorage.removeItem(`chat-emit-${this.room}`),0);} }
-      async clearAll(){ this._set([]); messagesCache=[]; list.innerHTML=''; if(this.supportsBC){ this.bc.postMessage({type:'clear'}); } else { localStorage.setItem(`chat-clear-${this.room}`,'1'); setTimeout(()=>localStorage.removeItem(`chat-clear-${this.room}`),0);} systemLine('Semua pesan (lokal) untuk room ini sudah dihapus.'); }
-      async exportAll(){ return this._get(); }
-    }
-
-    // ---- boot ----
-    let transport = HAS_FB ? new FirebaseTransport(ROOM) : new DemoTransport(ROOM);
-    setBadge(HAS_FB?'FIREBASE (online)':'DEMO (lokal)', HAS_FB?'#134e4a':'#3f3f46');
-    function addBubbleProxy(m){ addBubble(m, m.name===NAME); }
-    transport.listen(addBubbleProxy);
-
-    // ---- input ----
-    async function sendMsg(){ const t=msg.value.trim(); if(!t) return; if(!NAME) askName(); await transport.send(NAME||'Anon', t); msg.value=''; msg.focus(); }
-    send.addEventListener('click', sendMsg);
-    msg.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMsg(); });
-    list.addEventListener('click', ()=> msg.focus());
-
-    // ---- menu ----
-    menuBtn.addEventListener('click', e=>{ e.stopPropagation(); menuPanel.classList.toggle('show'); });
-    document.addEventListener('click', ()=> menuPanel.classList.remove('show'));
-    $('#gantiNama').onclick=()=>{ askName(); menuPanel.classList.remove('show'); };
-    $('#gantiRuang').onclick=()=>{ const r=prompt('Nama room/ruang?', ROOM); if(r&&r.trim()) setRoom(r.trim()); };
-    $('#salinLink').onclick=()=>{ const u=new URL(location.href); u.searchParams.set('room',ROOM); const link=u.toString(); const ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('Link room disalin: '+link); menuPanel.classList.remove('show'); };
-    $('#hapusKu').onclick=()=>{ list.innerHTML=''; alert('Tampilan lokal dibersihkan (data Firestore tetap ada).'); menuPanel.classList.remove('show'); };
-    $('#hapusRoom').onclick=async()=>{ if(!confirm(`Yakin hapus SEMUA pesan di room "${ROOM}"? Tindakan ini permanen.`)) return; try{ await transport.clearAll(); } catch(e){ alert('Gagal menghapus. Pastikan rules Firestore mengizinkan delete.'); console.error(e);} finally{ setUIBusy(false);} menuPanel.classList.remove('show'); };
-
-    // ---- export / clipboard ----
-    async function exportLines(){ const arr=await transport.exportAll(); return (arr||[]).map(m=>{ const d=new Date(m.ts||Date.now()); const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0'); return `[${hh}:${mm}] ${m.name}: ${m.text}`; }); }
-    $('#simpanTxt').onclick=async()=>{ const txt=(await exportLines()).join('\n')||'(belum ada percakapan)'; const blob=new Blob([txt],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`percakapan_${ROOM}.txt`; a.click(); URL.revokeObjectURL(url); menuPanel.classList.remove('show'); };
-    $('#salinSemua').onclick=async()=>{ const txt=(messagesCache||[]).map(m=>{ const d=new Date(m.ts||Date.now()); const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0'); return `[${hh}:${mm}] ${m.name}: ${m.text}`; }).join('\n')||'(belum ada percakapan)'; try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(txt); alert('Percakapan disalin.'); } else { throw new Error('Clipboard tidak tersedia'); } } catch{ const blob=new Blob([txt],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`percakapan_${ROOM}.txt`; a.click(); URL.revokeObjectURL(url); alert('Clipboard diblokir. File .txt diunduh sebagai fallback.'); } menuPanel.classList.remove('show'); };
-
-    // ---- debug ----
-    (function(){ const u=new URL(location.href); if(u.searchParams.get('debug')==='1'){ debugBar.style.display='block'; const proj=(firebaseConfig&&firebaseConfig.projectId)||'n/a'; debugBar.textContent=`mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}`; } })();
-
-    // ---- self-tests ringkas ----
-    //---(function(){ try{ if(['A','B'].join('\n')!=='A\nB') throw Error('join\\n'); addBubble({name:'Test',text:'Halo',ts:Date.now()},false); }catch(e){ console.warn('Self-test:', e.message);} })();---
-  </script>
-</body>
-</html>
+  }
+  await transport.send(NAME||'Anon', t, fileMeta);
+  if(file && !HAS_FB){ setTimeout(()=>URL.revokeObjectURL(fileMeta.url),60000) }
+  msg.value=''; fInput.value=''; msg.focus();
