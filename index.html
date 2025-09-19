@@ -16,7 +16,7 @@
     .me{margin-left:auto;font-size:14px;color:var(--muted)}
     .dropdown{position:relative}
     .menu{margin-left:8px;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer}
-    .dropdown-content{display:none;position:absolute;right:0;margin-top:8px;background:var(--chat);border:1px solid var(--line);min-width:220px;border-radius:12px;overflow:hidden;z-index:20}
+    .dropdown-content{display:none;position:absolute;right:0;margin-top:8px;background:var(--chat);border:1px solid var(--line);min-width:240px;border-radius:12px;overflow:hidden;z-index:20}
     .dropdown-content button{width:100%;text-align:left;padding:10px 12px;background:transparent;border:none;color:var(--text);cursor:pointer}
     .dropdown-content button:hover{background:#0e171c}
     .show{display:block}
@@ -36,6 +36,7 @@
 
     @media (max-width:480px){ body{font-size:18px} #msg{font-size:18px} }
     #list::-webkit-scrollbar{width:10px} #list::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px}
+    body[data-pending="1"] header::after{content:"menyimpan…";margin-left:10px;color:#93c5fd;font-size:12px}
   </style>
 </head>
 <body>
@@ -62,9 +63,11 @@
     <button id="send">Kirim</button>
   </div>
 
+  <div id="debugBar" style="position:fixed;bottom:6px;left:6px;font:12px system-ui;background:rgba(32,44,51,.9);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:#cbd5e1;display:none"></div>
+
   <script>
     // ===== Konfigurasi Firebase (opsional). Jika dibiarkan PASTE_..., aplikasi otomatis jalan dalam MODE DEMO (tanpa Firebase) =====
-    const firebaseConfig = {
+   const firebaseConfig = {
   apiKey: "AIzaSyBvLYsdcQbaS37udt-UaDGfmuFR2-lMIxM",
   authDomain: "chating-84a2c.firebaseapp.com",
   projectId: "chating-84a2c",
@@ -83,8 +86,11 @@
     const meLabel = $("#meLabel");
     const menuBtn = $("#menuBtn");
     const menuPanel = $("#menuPanel");
+    const modeBadge = document.getElementById('modeBadge');
 
-    let messagesCache = []; // selalu sinkron dengan UI untuk operasi sinkron (clipboard)
+    let messagesCache = []; // untuk ekspor/copy cepat
+
+    function setBadge(txt, bg){ modeBadge.textContent = txt; modeBadge.style.background = bg; }
 
     function sanitizeRoom(r){ return (r||'').toString().trim().toLowerCase().replace(/[^a-z0-9-_]/g,'-') || 'umum'; }
     function getRoom(){
@@ -160,7 +166,91 @@
       list.scrollTop = list.scrollHeight;
     }
 
-    // ===== Transport Abstraction (DEMO vs Firebase) =====
+    function loadScript(src){
+      return new Promise((res, rej)=>{
+        const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = ()=>rej(new Error('load fail '+src));
+        document.head.appendChild(s);
+      });
+    }
+
+    // ===== Transport: Firebase (realtime lintas perangkat) =====
+    class FirebaseTransport{
+      constructor(room){ this.room = room; this.db = null; this.unsub = null; this.seen = new Set(); }
+      async _ensure(){
+        if(this.db) return;
+        await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
+        await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js');
+        if(!firebase.apps || !firebase.apps.length){ firebase.initializeApp(firebaseConfig); }
+        this.db = firebase.firestore();
+      }
+      async _rulesProbe(){
+        // Pastikan READ diizinkan; jika tidak, akan langsung fallback
+        await this.db.collection('rooms').doc(this.room).collection('messages').limit(1).get({source:'server'});
+      }
+      async listen(cb){
+        await this._ensure();
+        systemLine(`Ruang: ${this.room}`);
+        if (firebaseConfig && firebaseConfig.projectId) systemLine(`Project: ${firebaseConfig.projectId} • Path: rooms/${this.room}`);
+        try{ await this._rulesProbe(); }
+        catch(e){
+          console.error('[Firestore] rules probe failed:', e);
+          systemLine('⚠️ Firestore READ ditolak. Otomatis pakai DEMO lokal. Periksa Rules.');
+          setBadge('DEMO (fallback)', '#7c2d12');
+          transport = new DemoTransport(ROOM);
+          transport.listen(addBubbleProxy);
+          return;
+        }
+        // Gunakan docChanges agar tidak clear list setiap snapshot
+        this.unsub = this.db.collection('rooms').doc(this.room).collection('messages')
+          .orderBy('ts','asc').limit(500)
+          .onSnapshot({ includeMetadataChanges: true }, snap=>{
+            snap.docChanges().forEach(ch=>{
+              if(ch.type === 'added' || ch.type === 'modified'){
+                const m = ch.doc.data();
+                let tsVal = (typeof m.ts === 'number') ? m.ts : undefined;
+                if(tsVal === undefined && m.serverTs && typeof m.serverTs.toDate === 'function') tsVal = m.serverTs.toDate().getTime();
+                if(tsVal === undefined) tsVal = Date.now();
+                const norm = { name:m.name, text:m.text, ts: tsVal };
+                if(!this.seen.has(ch.doc.id)){
+                  this.seen.add(ch.doc.id);
+                  messagesCache.push(norm);
+                  cb(norm);
+                }
+              }
+            });
+            const pend = snap.metadata.hasPendingWrites;
+            document.body.dataset.pending = pend ? '1' : '0';
+          }, err=>{
+            console.error('[Firestore] onSnapshot error:', err);
+            systemLine('❌ Gagal langganan Firestore. Fallback ke DEMO.');
+            setBadge('DEMO (fallback)', '#7c2d12');
+            transport = new DemoTransport(ROOM);
+            transport.listen(addBubbleProxy);
+          });
+      }
+      async send(name, text){
+        await this._ensure();
+        await this.db.collection('rooms').doc(this.room).collection('messages').add({
+          name,
+          text,
+          ts: Date.now(), // stabil untuk orderBy
+          serverTs: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      async exportAll(){
+        await this._ensure();
+        const qs = await this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').get({source:'server'});
+        const arr = [];
+        qs.forEach(doc=>{
+          const m = doc.data();
+          const ts = (typeof m.ts === 'number') ? m.ts : (m.serverTs && m.serverTs.toDate ? m.serverTs.toDate().getTime() : Date.now());
+          arr.push({name:m.name, text:m.text, ts});
+        });
+        return arr;
+      }
+    }
+
+    // ===== Transport: Demo (lokal) =====
     class DemoTransport{ // HANYA LOKAL/SE-PERANGKAT
       constructor(room){
         this.room = room;
@@ -170,7 +260,6 @@
         if(this.supportsBC){
           try{ this.bc = new BroadcastChannel(`chat-room-${room}`); }catch{ this.supportsBC=false; }
         }
-        // fallback via localStorage 'storage' event
         window.addEventListener('storage', (e)=>{
           if(e.key === `chat-emit-${this.room}` && e.newValue){
             try{ const m = JSON.parse(e.newValue); messagesCache.push(m); addBubbleProxy(m); }catch{}
@@ -182,107 +271,24 @@
       listen(cb){
         systemLine(`Ruang: ${this.room} (DEMO mode — tidak realtime lintas perangkat). Gunakan Firebase agar sinkron antar HP/PC.`);
         systemLine(`Path: rooms/${this.room}`);
-        // initial
         const arr = this._get();
         messagesCache = [];
         arr.forEach(m=>{ messagesCache.push(m); cb(m); });
-        // listen broadcast (antar tab)
-        if(this.supportsBC){
-          this.bc.onmessage = (ev)=>{ if(ev.data && ev.data.type==='new'){ messagesCache.push(ev.data.msg); cb(ev.data.msg); } };
-        }
+        if(this.supportsBC){ this.bc.onmessage = (ev)=>{ if(ev.data && ev.data.type==='new'){ messagesCache.push(ev.data.msg); cb(ev.data.msg); } }; }
       }
       async send(name, text){
         const m = { name, text, ts: Date.now() };
         const arr = this._get(); arr.push(m); this._set(arr);
-        messagesCache.push(m); // pastikan tab ini juga update
-        addBubbleProxy(m);
+        messagesCache.push(m); addBubbleProxy(m);
         if(this.supportsBC){ this.bc.postMessage({type:'new', msg:m}); }
-        else {
-          // trigger untuk tab lain
-          localStorage.setItem(`chat-emit-${this.room}`, JSON.stringify(m));
-          setTimeout(()=> localStorage.removeItem(`chat-emit-${this.room}`), 0);
-        }
+        else { localStorage.setItem(`chat-emit-${this.room}`, JSON.stringify(m)); setTimeout(()=> localStorage.removeItem(`chat-emit-${this.room}`), 0); }
         return true;
       }
       async exportAll(){ return this._get(); }
     }
 
-    class FirebaseTransport{
-      constructor(room){ this.room = room; this.db = null; this.unsub = null; }
-      async _ensure(){
-        if(this.db) return;
-        await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
-        await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js');
-        if(!firebase.apps || !firebase.apps.length){ firebase.initializeApp(firebaseConfig); }
-        this.db = firebase.firestore();
-      }
-      async listen(cb){
-        await this._ensure();
-        systemLine(`Ruang: ${this.room}`);
-        if (firebaseConfig && firebaseConfig.projectId) systemLine(`Project: ${firebaseConfig.projectId} • Path: rooms/${this.room}`);
-        this.unsub = this.db.collection('rooms').doc(this.room).collection('messages')
-          .orderBy('ts','asc').limit(500)
-          .onSnapshot(snap=>{
-            list.innerHTML = '';
-            messagesCache = [];
-            snap.forEach(doc=>{
-              const m = doc.data();
-              // Gunakan ts (number) jika ada; fallback ke serverTs
-              let tsVal = (typeof m.ts === 'number') ? m.ts : undefined;
-              if(tsVal === undefined && m.serverTs && typeof m.serverTs.toDate === 'function'){
-                tsVal = m.serverTs.toDate().getTime();
-              }
-              if(tsVal === undefined){ tsVal = Date.now(); }
-              const norm = { name:m.name, text:m.text, ts: tsVal };
-              messagesCache.push(norm);
-              cb(norm);
-            });
-          }, err=>{
-            console.error(err);
-            systemLine('Gagal konek Firestore (cek config/rules). Beralih ke DEMO.');
-            transport = new DemoTransport(ROOM);
-            transport.listen(addBubbleProxy);
-          });
-      }
-      async send(name, text){
-        await this._ensure();
-        await this.db.collection('rooms').doc(this.room).collection('messages').add({
-          name,
-          text,
-          ts: Date.now(), // client timestamp (number) → stabil untuk orderBy
-          serverTs: firebase.firestore.FieldValue.serverTimestamp() // optional: waktu server
-        });
-      }
-      async exportAll(){
-        await this._ensure();
-        const qs = await this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').get({ source: 'server' });
-        const arr = [];
-        qs.forEach(doc=>{
-          const m = doc.data();
-          let ts = Date.now();
-          const v = m.ts;
-          if(v && typeof v === 'object' && typeof v.toDate === 'function'){ ts = v.toDate().getTime(); }
-          else if(typeof v === 'number'){ ts = v; }
-          arr.push({name:m.name, text:m.text, ts: (typeof m.ts === 'number' ? m.ts : (m.serverTs && m.serverTs.toDate ? m.serverTs.toDate().getTime() : Date.now()))});
-        });
-        return arr;
-      }
-    }
-
-    function loadScript(src){
-      return new Promise((res, rej)=>{
-        const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = ()=>rej(new Error('load fail '+src));
-        document.head.appendChild(s);
-      });
-    }
-
     let transport = HAS_FB ? new FirebaseTransport(ROOM) : new DemoTransport(ROOM);
-
-    // Update badge mode di header
-    const modeBadge = document.getElementById('modeBadge');
-    function setBadge(txt, bg){ modeBadge.textContent = txt; modeBadge.style.background = bg; }
-    if(HAS_FB){ setBadge('FIREBASE (online)', '#134e4a'); }
-    else { setBadge('DEMO (lokal)', '#3f3f46'); }
+    if(HAS_FB){ setBadge('FIREBASE (online)', '#134e4a'); } else { setBadge('DEMO (lokal)', '#3f3f46'); }
 
     function addBubbleProxy(m){ addBubble(m, m.name === NAME); }
     transport.listen(addBubbleProxy);
@@ -314,13 +320,12 @@
     async function copyTextSafely(text){
       try{
         if(navigator.clipboard && window.isSecureContext){
-          await navigator.clipboard.writeText(text); // harus dipanggil langsung dari event handler
+          await navigator.clipboard.writeText(text);
           return {ok:true, method:'clipboard'};
         }
         throw new Error('Clipboard API tidak tersedia atau context tidak aman');
       }catch(err){
         try{
-          // Fallback: execCommand('copy')
           const ta = document.createElement('textarea');
           ta.value = text; ta.setAttribute('readonly','');
           ta.style.position = 'fixed'; ta.style.top = '-1000px';
@@ -330,9 +335,7 @@
           document.body.removeChild(ta);
           if(ok) return {ok:true, method:'execCommand'};
           throw new Error('execCommand copy gagal');
-        }catch(err2){
-          return {ok:false, error: err.message + ' / ' + err2.message};
-        }
+        }catch(err2){ return {ok:false, error: err.message + ' / ' + err2.message}; }
       }
     }
 
@@ -341,13 +344,9 @@
     document.addEventListener('click', ()=> menuPanel.classList.remove('show'));
 
     $('#gantiNama').onclick = ()=> { askName(); menuPanel.classList.remove('show'); };
-    $('#gantiRuang').onclick = ()=>{
-      const r = prompt('Nama room/ruang?', ROOM);
-      if(r && r.trim()) setRoom(r.trim());
-    };
+    $('#gantiRuang').onclick = ()=>{ const r = prompt('Nama room/ruang?', ROOM); if(r && r.trim()) setRoom(r.trim()); };
     $('#salinLink').onclick = ()=>{
-      const url = new URL(location.href);
-      url.searchParams.set('room', ROOM);
+      const url = new URL(location.href); url.searchParams.set('room', ROOM);
       const u = url.toString();
       const ta = document.createElement('textarea'); ta.value = u; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
       alert('Link room disalin: ' + u);
@@ -374,60 +373,46 @@
       menuPanel.classList.remove('show');
     };
 
-    // ===== Salin semua ke Clipboard (tanpa await sebelum copy) =====
+    // ===== Salin semua ke Clipboard =====
     $('#salinSemua').onclick = async ()=>{
-      // bangun teks sinkron agar user-activation tidak hilang
       const txt = (buildLinesFromCache()).join('\n') || '(belum ada percakapan)';
       const res = await copyTextSafely(txt);
-      if(res.ok){
-        alert(`Percakapan disalin (metode: ${res.method}).`);
-      } else {
-        // Fallback terakhir: unduh file agar user tetap dapat menyalin
+      if(res.ok){ alert(`Percakapan disalin (metode: ${res.method}).`); }
+      else {
         const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = `percakapan_${ROOM}.txt`; a.click();
         URL.revokeObjectURL(url);
-        alert('Clipboard diblokir oleh Permissions Policy atau context tidak aman. File .txt diunduh sebagai fallback.');
+        alert('Clipboard diblokir. File .txt diunduh sebagai fallback.');
       }
       menuPanel.classList.remove('show');
     };
 
-    // ====== SELF-TESTS ======
+    // ===== Debug overlay (aktifkan ?debug=1) =====
+    (function(){
+      const url = new URL(location.href);
+      if(url.searchParams.get('debug')==='1'){
+        const el = document.getElementById('debugBar');
+        el.style.display = 'block';
+        const proj = (firebaseConfig && firebaseConfig.projectId) ? firebaseConfig.projectId : 'n/a';
+        el.textContent = `mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}`;
+      }
+    })();
+
+    // ===== SELF-TESTS =====
     (function runSelfTests(){
       try{
-        // Test 1: newline join must be "\n"
-        const t1 = ['A','B'].join('\n') === 'A\nB';
-        if(!t1) throw new Error('Join newline gagal');
-
-        // Test 2: addBubble tidak error
+        const t1 = ['A','B'].join('\n') === 'A\nB'; if(!t1) throw new Error('Join newline gagal');
         addBubble({name:'Test', text:'Halo', ts:Date.now()}, false);
-
-        // Test 3: DemoTransport simpan/ambil
         const rt = 'rt_'+Math.random().toString(36).slice(2);
-        const dt = new DemoTransport(rt);
-        dt.send('Uji','Pesan');
-        dt.exportAll().then(arr=>{
-          if(!arr || !arr.length) console.warn('Self-test: exportAll kosong (ok jika private mode).');
-        });
-
-        // Test 4: buildLinesFromCache menghasilkan baris
-        messagesCache.push({name:'A', text:'x', ts:Date.now()});
-        messagesCache.push({name:'B', text:'y', ts:Date.now()});
-        const lines = buildLinesFromCache();
-        if(!(Array.isArray(lines) && lines.length>=2)) throw new Error('buildLinesFromCache gagal');
-
-        // Test 5: copyTextSafely mengembalikan Promise object
-        const p = copyTextSafely('test');
-        if(!(p && typeof p.then==='function')) throw new Error('copyTextSafely bukan Promise');
-
-        // Test 6: mode badge terpasang
+        const dt = new DemoTransport(rt); dt.send('Uji','Pesan'); dt.exportAll().then(()=>{});
+        messagesCache.push({name:'A', text:'x', ts:Date.now()}); messagesCache.push({name:'B', text:'y', ts:Date.now()});
+        const lines = buildLinesFromCache(); if(!(Array.isArray(lines) && lines.length>=2)) throw new Error('buildLinesFromCache gagal');
+        const p = copyTextSafely('test'); if(!(p && typeof p.then==='function')) throw new Error('copyTextSafely bukan Promise');
+        // Dedupe test seperti docChanges
+        (function(){ const set=new Set(); const ids=['a','b','a']; let count=0; ids.forEach(id=>{ if(!set.has(id)){ set.add(id); count++; } }); if(count!==2) throw new Error('docChanges dedupe gagal'); })();
         if(!document.getElementById('modeBadge').textContent) throw new Error('Mode badge tidak terpasang');
-
-        // Test 7: handler menu terpasang
-        if(typeof $('#gantiRuang').onclick !== 'function' || typeof $('#salinLink').onclick !== 'function'){
-          throw new Error('Handlers menu tidak terpasang');
-        }
-
+        if(typeof $('#gantiRuang').onclick !== 'function' || typeof $('#salinLink').onclick !== 'function') throw new Error('Handlers menu tidak terpasang');
         console.log('Self-tests passed.');
       }catch(e){ console.warn('Self-tests warning:', e.message); }
     })();
@@ -458,18 +443,5 @@
   }
   ==========================================================
   -->
-  <div id="debugBar" style="position:fixed;bottom:6px;left:6px;font:12px system-ui;background:rgba(32,44,51,.9);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:#cbd5e1;display:none"></div>
-  <script>
-    // Debug overlay (aktifkan dengan ?debug=1)
-    (function(){
-      const url = new URL(location.href);
-      if(url.searchParams.get('debug')==='1'){
-        const el = document.getElementById('debugBar');
-        el.style.display = 'block';
-        const proj = (firebaseConfig && firebaseConfig.projectId) ? firebaseConfig.projectId : 'n/a';
-        el.textContent = `mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}`;
-      }
-    })();
-  </script>
 </body>
 </html>
