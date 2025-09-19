@@ -171,7 +171,7 @@
     (function(){ const u=new URL(location.href); if(u.searchParams.get('debug')==='1'){ debugBar.style.display='block'; const proj=(firebaseConfig&&firebaseConfig.projectId)||'n/a'; debugBar.textContent=`mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}`; } })();
 
     // ---- self-tests ringkas ----
-    (function(){ try{ if(['A','B'].join('\n')!=='A\nB') throw Error('join\\n'); addBubble({name:'Test',text:'Halo',ts:Date.now()},false); }catch(e){ console.warn('Self-test:', e.message);} })();
+    //---(function(){ try{ if(['A','B'].join('\n')!=='A\nB') throw Error('join\\n'); addBubble({name:'Test',text:'Halo',ts:Date.now()},false); }catch(e){ console.warn('Self-test:', e.message);} })();---
   </script>
 </body>
 </html>
