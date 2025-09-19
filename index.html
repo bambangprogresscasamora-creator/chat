@@ -145,3 +145,31 @@ async function sendMsg(){
   await transport.send(NAME||'Anon', t, fileMeta);
   if(file && !HAS_FB){ setTimeout(()=>URL.revokeObjectURL(fileMeta.url),60000) }
   msg.value=''; fInput.value=''; msg.focus();
+}
+
+send.addEventListener('click',sendMsg);
+msg.addEventListener('keydown',e=>{ if(e.key==='Enter') sendMsg() });
+document.getElementById('attach').addEventListener('click',()=> document.getElementById('filePick').click());
+list.addEventListener('click',()=> msg.focus());
+
+// ---- menu ----
+menuBtn.addEventListener('click',e=>{ e.stopPropagation(); menuPanel.classList.toggle('show') });
+document.addEventListener('click',()=> menuPanel.classList.remove('show'));
+$('#gantiNama').onclick=()=>{ askName(); menuPanel.classList.remove('show') };
+$('#gantiRuang').onclick=()=>{ const r=prompt('Nama room/ruang?',ROOM); if(r&&r.trim()) setRoom(r.trim()) };
+(function(){ const el=document.getElementById('soundState'); if(el) el.textContent=SOUND?'on':'off' })();
+$('#toggleSound').onclick=()=>{ SOUND=!SOUND; localStorage.setItem('CHAT_SOUND',SOUND?'on':'off'); const el=document.getElementById('soundState'); if(el) el.textContent=SOUND?'on':'off' };
+$('#salinLink').onclick=()=>{ const u=new URL(location.href); u.searchParams.set('room',ROOM); const link=u.toString(); const ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('Link room disalin: '+link); menuPanel.classList.remove('show') };
+$('#hapusKu').onclick=()=>{ list.innerHTML=''; alert('Tampilan lokal dibersihkan (data Firestore tetap ada).'); menuPanel.classList.remove('show') };
+$('#hapusRoom').onclick=async()=>{ if(!confirm(`Yakin hapus SEMUA pesan di room "${ROOM}"?`)) return; try{ await transport.clearAll() }catch(e){ alert('Gagal menghapus. Cek rules Firestore.'); console.error(e)} finally{ setUIBusy(false) } menuPanel.classList.remove('show') };
+
+// ---- ekspor / clipboard ----
+async function exportLines(){ const arr=await transport.exportAll?.()||messagesCache; return (arr||[]).map(m=>{ const d=new Date(m.ts||Date.now()); const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0'); return `[${hh}:${mm}] ${m.name}: ${m.text}` }) }
+$('#simpanTxt').onclick=async()=>{ const txt=(await exportLines()).join('\n')||'(belum ada percakapan)'; const blob=new Blob([txt],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`percakapan_${ROOM}.txt`; a.click(); URL.revokeObjectURL(url); menuPanel.classList.remove('show') };
+$('#salinSemua').onclick=async()=>{ const txt=(messagesCache||[]).map(m=>{ const d=new Date(m.ts||Date.now()); const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0'); return `[${hh}:${mm}] ${m.name}: ${m.text}` }).join('\n')||'(belum ada percakapan)'; try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(txt); alert('Percakapan disalin.') } else { throw new Error('Clipboard tidak tersedia') } } catch{ const blob=new Blob([txt],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`percakapan_${ROOM}.txt`; a.click(); URL.revokeObjectURL(url); alert('Clipboard diblokir. File .txt diunduh sebagai fallback.') } menuPanel.classList.remove('show') };
+
+// ---- debug ----
+(function(){ const u=new URL(location.href); if(u.searchParams.get('debug')==='1'){ debugBar.style.display='block'; const proj=(firebaseConfig&&firebaseConfig.projectId)||'n/a'; debugBar.textContent=`mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}` } })();
+</script>
+</body>
+</html>
