@@ -227,11 +227,13 @@
             messagesCache = [];
             snap.forEach(doc=>{
               const m = doc.data();
-              let ts = Date.now();
-              const v = m.ts;
-              if(v && typeof v === 'object' && typeof v.toDate === 'function'){ ts = v.toDate().getTime(); }
-              else if(typeof v === 'number'){ ts = v; }
-              const norm = { name:m.name, text:m.text, ts };
+              // Gunakan ts (number) jika ada; fallback ke serverTs
+              let tsVal = (typeof m.ts === 'number') ? m.ts : undefined;
+              if(tsVal === undefined && m.serverTs && typeof m.serverTs.toDate === 'function'){
+                tsVal = m.serverTs.toDate().getTime();
+              }
+              if(tsVal === undefined){ tsVal = Date.now(); }
+              const norm = { name:m.name, text:m.text, ts: tsVal };
               messagesCache.push(norm);
               cb(norm);
             });
@@ -245,12 +247,15 @@
       async send(name, text){
         await this._ensure();
         await this.db.collection('rooms').doc(this.room).collection('messages').add({
-          name, text, ts: firebase.firestore.FieldValue.serverTimestamp()
+          name,
+          text,
+          ts: Date.now(), // client timestamp (number) → stabil untuk orderBy
+          serverTs: firebase.firestore.FieldValue.serverTimestamp() // optional: waktu server
         });
       }
       async exportAll(){
         await this._ensure();
-        const qs = await this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').get();
+        const qs = await this.db.collection('rooms').doc(this.room).collection('messages').orderBy('ts','asc').get({ source: 'server' });
         const arr = [];
         qs.forEach(doc=>{
           const m = doc.data();
@@ -258,7 +263,7 @@
           const v = m.ts;
           if(v && typeof v === 'object' && typeof v.toDate === 'function'){ ts = v.toDate().getTime(); }
           else if(typeof v === 'number'){ ts = v; }
-          arr.push({name:m.name, text:m.text, ts});
+          arr.push({name:m.name, text:m.text, ts: (typeof m.ts === 'number' ? m.ts : (m.serverTs && m.serverTs.toDate ? m.serverTs.toDate().getTime() : Date.now()))});
         });
         return arr;
       }
@@ -453,5 +458,18 @@
   }
   ==========================================================
   -->
+  <div id="debugBar" style="position:fixed;bottom:6px;left:6px;font:12px system-ui;background:rgba(32,44,51,.9);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:#cbd5e1;display:none"></div>
+  <script>
+    // Debug overlay (aktifkan dengan ?debug=1)
+    (function(){
+      const url = new URL(location.href);
+      if(url.searchParams.get('debug')==='1'){
+        const el = document.getElementById('debugBar');
+        el.style.display = 'block';
+        const proj = (firebaseConfig && firebaseConfig.projectId) ? firebaseConfig.projectId : 'n/a';
+        el.textContent = `mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}`;
+      }
+    })();
+  </script>
 </body>
 </html>
