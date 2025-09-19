@@ -64,7 +64,7 @@
 
   <script>
     // ===== Konfigurasi Firebase (opsional). Jika dibiarkan PASTE_..., aplikasi otomatis jalan dalam MODE DEMO (tanpa Firebase) =====
-   const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyBvLYsdcQbaS37udt-UaDGfmuFR2-lMIxM",
   authDomain: "chating-84a2c.firebaseapp.com",
   projectId: "chating-84a2c",
@@ -99,7 +99,7 @@
       const url = new URL(location.href);
       url.searchParams.set('room', norm);
       location.href = url.toString();
-    }`; }
+    }
 
     let ROOM = getRoom();
     let NAME = localStorage.getItem("CHAT_NAME") || "";
@@ -348,8 +348,6 @@
       alert('Link room disalin: ' + u);
       menuPanel.classList.remove('show');
     };
-      if(r && r.trim()) setRoom(r.trim());
-    };
     $('#hapusKu').onclick = ()=>{ list.innerHTML = ''; alert('Tampilan lokal dibersihkan.'); menuPanel.classList.remove('show'); };
 
     // ===== Simpan percakapan (.txt) =====
@@ -417,9 +415,15 @@
         const p = copyTextSafely('test');
         if(!(p && typeof p.then==='function')) throw new Error('copyTextSafely bukan Promise');
 
-        console.log('Self-tests passed.');
         // Test 6: mode badge terpasang
         if(!document.getElementById('modeBadge').textContent) throw new Error('Mode badge tidak terpasang');
+
+        // Test 7: handler menu terpasang
+        if(typeof $('#gantiRuang').onclick !== 'function' || typeof $('#salinLink').onclick !== 'function'){
+          throw new Error('Handlers menu tidak terpasang');
+        }
+
+        console.log('Self-tests passed.');
       }catch(e){ console.warn('Self-tests warning:', e.message); }
     })();
   </script>
