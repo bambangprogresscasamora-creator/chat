@@ -76,9 +76,37 @@ const HAS_FB=firebaseConfig.apiKey&&!String(firebaseConfig.apiKey).startsWith('P
 const $=s=>document.querySelector(s);
 const list=$('#list'),msg=$('#msg'),send=$('#send'),meLabel=$('#meLabel'),menuBtn=$('#menuBtn'),menuPanel=$('#menuPanel'),modeBadge=$('#modeBadge'),debugBar=$('#debugBar'),overlayBusy=$('#overlayBusy');
 let messagesCache=[]; let SOUND=(localStorage.getItem('CHAT_SOUND')||'on')==='on';
+// Audio singleton (wajib inisialisasi lewat gesture pengguna)
+let AC=null, ACReady=false;
+function ensureAudio(){
+  try{
+    if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+    ACReady = (AC.state==='running'||AC.state==='interrupted');
+  }catch(e){ ACReady=false; }
+}
+function initAudioOnce(){ ensureAudio(); }
+['click','touchstart','keydown'].forEach(ev=>document.addEventListener(ev, initAudioOnce, {once:true, passive:true}));
 function setBadge(t,bg){modeBadge.textContent=t;modeBadge.style.background=bg}
 function setUIBusy(b){try{send.disabled=!!b;msg.disabled=!!b}catch{} overlayBusy.style.display=b?'flex':'none'}
-function playBeep(){ if(!SOUND) return; try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.08,ac.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+0.25); o.start(); o.stop(ac.currentTime+0.26);}catch{} }
+function playBeep(){
+  if(!SOUND) return;
+  if(!ACReady){
+    // Coba inisialisasi segera; jika tetap gagal, abaikan tanpa error
+    ensureAudio(); if(!ACReady) return;
+  }
+  try{
+    const o=AC.createOscillator();
+    const g=AC.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(880, AC.currentTime);
+    o.connect(g); g.connect(AC.destination);
+    // Envelope singkat
+    g.gain.setValueAtTime(0.0001, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.08, AC.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+0.25);
+    o.start(); o.stop(AC.currentTime+0.26);
+  } catch (e) { /* diamkan */ }
+}
 
 function sanitizeRoom(r){return (r||'').toString().trim().toLowerCase().replace(/[^a-z0-9-_]/g,'-')||'umum'}
 function getRoom(){const u=new URL(location.href);const q=u.searchParams.get('room');const s=localStorage.getItem('CHAT_ROOM');return sanitizeRoom(q||s||'umum')}
@@ -168,8 +196,20 @@ async function exportLines(){ const arr=await transport.exportAll?.()||messagesC
 $('#simpanTxt').onclick=async()=>{ const txt=(await exportLines()).join('\n')||'(belum ada percakapan)'; const blob=new Blob([txt],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`percakapan_${ROOM}.txt`; a.click(); URL.revokeObjectURL(url); menuPanel.classList.remove('show') };
 $('#salinSemua').onclick=async()=>{ const txt=(messagesCache||[]).map(m=>{ const d=new Date(m.ts||Date.now()); const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0'); return `[${hh}:${mm}] ${m.name}: ${m.text}` }).join('\n')||'(belum ada percakapan)'; try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(txt); alert('Percakapan disalin.') } else { throw new Error('Clipboard tidak tersedia') } } catch{ const blob=new Blob([txt],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`percakapan_${ROOM}.txt`; a.click(); URL.revokeObjectURL(url); alert('Clipboard diblokir. File .txt diunduh sebagai fallback.') } menuPanel.classList.remove('show') };
 
-// ---- debug ----
-(function(){ const u=new URL(location.href); if(u.searchParams.get('debug')==='1'){ debugBar.style.display='block'; const proj=(firebaseConfig&&firebaseConfig.projectId)||'n/a'; debugBar.textContent=`mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}` } })();
+// ---- debug & self-tests (non-intrusif) ----
+(function(){
+  const u=new URL(location.href);
+  const on=u.searchParams.get('debug')==='1';
+  if(on){
+    debugBar.style.display='block';
+    const proj=(firebaseConfig&&firebaseConfig.projectId)||'n/a';
+    debugBar.textContent=`mode=${HAS_FB?'FIREBASE':'DEMO'} • project=${proj} • room=${ROOM}`;
+    // Test 1: newline join
+    try{ if(['A','B'].join('\n')!=='A\nB') throw new Error('join\\n mismatch'); }catch(e){ console.warn('[TEST] join\\n:', e.message); }
+    // Test 2: playBeep should not throw even if muted
+    try{ playBeep(); }catch(e){ console.warn('[TEST] playBeep threw:', e); }
+  }
+})();
 </script>
 </body>
 </html>
